@@ -18,7 +18,7 @@ async function hasValidSession(request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isLoginPage = pathname === "/login";
+  const isLoginPage = pathname === "/login" || pathname === "/cadastro";
   const authenticated = await hasValidSession(request);
 
   if (isLoginPage) {

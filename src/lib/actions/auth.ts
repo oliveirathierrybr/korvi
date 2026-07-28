@@ -15,6 +15,54 @@ export type LoginState = {
   error?: string;
 };
 
+const registerSchema = z.object({
+  companyName: z.string().trim().min(1, "Informe o nome da empresa.").max(80),
+  name: z.string().trim().min(1, "Informe seu nome.").max(80),
+  email: z.string().email("Informe um e-mail válido."),
+  password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres."),
+});
+
+export type RegisterState = {
+  error?: string;
+};
+
+export async function registerAction(
+  _prevState: RegisterState,
+  formData: FormData
+): Promise<RegisterState> {
+  const parsed = registerSchema.safeParse({
+    companyName: formData.get("companyName"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const { companyName, name, email, password } = parsed.data;
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return { error: "Já existe uma conta com este e-mail." };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: { companyName, name, email, passwordHash },
+  });
+
+  await setSessionCookie({
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    companyName: user.companyName,
+  });
+
+  redirect("/");
+}
+
 export async function loginAction(
   _prevState: LoginState,
   formData: FormData

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Wallet } from "lucide-react";
 import { LoginForm } from "./login-form";
 
@@ -51,6 +52,12 @@ export default function LoginPage() {
             </p>
           </div>
           <LoginForm />
+          <p className="text-center text-sm text-muted-foreground lg:text-left">
+            Ainda não tem uma conta?{" "}
+            <Link href="/cadastro" className="font-medium text-primary hover:underline">
+              Criar conta da empresa
+            </Link>
+          </p>
         </div>
       </div>
     </div>
