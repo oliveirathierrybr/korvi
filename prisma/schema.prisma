@@ -8,13 +8,26 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String                @id @default(cuid())
+  email        String                @unique
   passwordHash String
   name         String
   companyName  String
-  cnpj         String   @default("")
-  createdAt    DateTime @default(now())
+  cnpj         String                @default("")
+  createdAt    DateTime              @default(now())
+  resetTokens  PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 enum CategoryType {

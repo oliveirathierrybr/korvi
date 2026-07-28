@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Wallet } from "lucide-react";
 import { AuthHero } from "@/components/auth-hero";
+import { Logo } from "@/components/logo";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "Entrar | Fluxo",
+  title: "Entrar | Korvi",
 };
 
 export default function LoginPage() {
@@ -18,9 +18,8 @@ export default function LoginPage() {
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-sm space-y-8">
           <div className="space-y-2 text-center lg:text-left">
-            <div className="mb-4 flex items-center justify-center gap-2 text-lg font-semibold lg:hidden">
-              <Wallet className="h-6 w-6 text-primary" />
-              Fluxo
+            <div className="mb-4 flex items-center justify-center lg:hidden">
+              <Logo size={28} wordmarkClassName="text-lg" />
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Acesse sua conta

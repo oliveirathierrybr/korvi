@@ -16,15 +16,23 @@ async function hasValidSession(request: NextRequest) {
   }
 }
 
+const GUEST_ONLY_ROUTES = ["/login", "/cadastro"];
+const PUBLIC_ROUTES = ["/esqueci-senha", "/redefinir-senha"];
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isLoginPage = pathname === "/login" || pathname === "/cadastro";
+  const isGuestOnly = GUEST_ONLY_ROUTES.includes(pathname);
+  const isPublic = PUBLIC_ROUTES.includes(pathname);
   const authenticated = await hasValidSession(request);
 
-  if (isLoginPage) {
+  if (isGuestOnly) {
     if (authenticated) {
       return NextResponse.redirect(new URL("/", request.url));
     }
+    return NextResponse.next();
+  }
+
+  if (isPublic) {
     return NextResponse.next();
   }
 

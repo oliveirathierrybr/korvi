@@ -1,4 +1,4 @@
-# Fluxo — Gestão financeira para pequenas empresas
+# Korvi — Gestão financeira inteligente
 
 Dashboard financeiro moderno para controlar o caixa (entradas e saídas),
 contas a pagar, contas a receber e relatórios de uma pequena empresa em um

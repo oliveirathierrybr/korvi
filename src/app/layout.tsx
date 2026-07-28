@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fluxo | Gestão financeira para pequenas empresas",
+  title: "Korvi | Gestão financeira inteligente",
   description:
     "Controle de caixa, contas a pagar e a receber e relatórios financeiros em um só lugar.",
 };

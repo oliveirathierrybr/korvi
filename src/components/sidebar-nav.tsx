@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet } from "lucide-react";
 import { navItems } from "@/components/nav-items";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -11,9 +11,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center gap-2 px-6 text-lg font-semibold">
-        <Wallet className="h-5 w-5 text-primary" />
-        Fluxo
+      <div className="flex h-16 items-center px-6">
+        <Logo size={26} wordmarkClassName="text-lg" />
       </div>
       <nav className="flex-1 space-y-1 px-3">
         {navItems.map((item) => {
