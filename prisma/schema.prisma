@@ -13,6 +13,7 @@ model User {
   passwordHash String
   name         String
   companyName  String
+  cnpj         String   @default("")
   createdAt    DateTime @default(now())
 }
 

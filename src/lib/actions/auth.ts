@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { clearSessionCookie, setSessionCookie } from "@/lib/session";
+import { isValidCnpj, onlyDigits } from "@/lib/cnpj";
 
 const loginSchema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -15,12 +16,23 @@ export type LoginState = {
   error?: string;
 };
 
-const registerSchema = z.object({
-  companyName: z.string().trim().min(1, "Informe o nome da empresa.").max(80),
-  name: z.string().trim().min(1, "Informe seu nome.").max(80),
-  email: z.string().email("Informe um e-mail válido."),
-  password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres."),
-});
+const registerSchema = z
+  .object({
+    companyName: z.string().trim().min(1, "Informe o nome da empresa.").max(80),
+    cnpj: z
+      .string()
+      .trim()
+      .min(1, "Informe o CNPJ.")
+      .refine((value) => isValidCnpj(value), "Informe um CNPJ válido."),
+    name: z.string().trim().min(1, "Informe seu nome.").max(80),
+    email: z.string().email("Informe um e-mail válido."),
+    password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres."),
+    confirmPassword: z.string().min(1, "Confirme sua senha."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem.",
+    path: ["confirmPassword"],
+  });
 
 export type RegisterState = {
   error?: string;
@@ -32,9 +44,11 @@ export async function registerAction(
 ): Promise<RegisterState> {
   const parsed = registerSchema.safeParse({
     companyName: formData.get("companyName"),
+    cnpj: formData.get("cnpj"),
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
   });
 
   if (!parsed.success) {
@@ -42,15 +56,21 @@ export async function registerAction(
   }
 
   const { companyName, name, email, password } = parsed.data;
+  const cnpj = onlyDigits(parsed.data.cnpj);
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
+  const existingEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingEmail) {
     return { error: "Já existe uma conta com este e-mail." };
+  }
+
+  const existingCnpj = await prisma.user.findFirst({ where: { cnpj } });
+  if (existingCnpj) {
+    return { error: "Já existe uma conta cadastrada com este CNPJ." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { companyName, name, email, passwordHash },
+    data: { companyName, cnpj, name, email, passwordHash },
   });
 
   await setSessionCookie({

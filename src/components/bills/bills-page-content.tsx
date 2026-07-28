@@ -86,53 +86,44 @@ export async function BillsPageContent({ direction }: { direction: Direction }) 
       </div>
 
       <Card>
-        <CardContent className="overflow-x-auto pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>{contactLabel}</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="w-28" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {bills.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                    Nenhuma conta cadastrada.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                bills.map((b) => {
+        <CardContent className="pt-6">
+          {bills.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhuma conta cadastrada.
+            </p>
+          ) : (
+            <>
+              {/* Cards empilhados em telas pequenas */}
+              <div className="space-y-2 sm:hidden">
+                {bills.map((b) => {
                   const isOverdue = b.status === "PENDENTE" && b.dueDate < today;
                   return (
-                    <TableRow key={b.id}>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {formatDate(b.dueDate)}
-                      </TableCell>
-                      <TableCell className="text-sm">{b.description}</TableCell>
-                      <TableCell className="text-sm">{b.contactName}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5 text-sm">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: b.category.color }}
-                          />
-                          {b.category.name}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={b.status} isOverdue={isOverdue} />
-                      </TableCell>
-                      <TableCell className="text-right text-sm font-medium tabular-nums">
-                        {formatCurrency(b.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
+                    <div key={b.id} className="rounded-lg border p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {b.description}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {contactLabel}: {b.contactName} · {formatDate(b.dueDate)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold tabular-nums">
+                          {formatCurrency(b.amount)}
+                        </p>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <StatusBadge status={b.status} isOverdue={isOverdue} />
+                          <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <span
+                              className="h-2 w-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: b.category.color }}
+                            />
+                            <span className="truncate">{b.category.name}</span>
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
                           {b.status === "PENDENTE" ? (
                             <>
                               <MarkPaidButton id={b.id} direction={direction} />
@@ -154,13 +145,83 @@ export async function BillsPageContent({ direction }: { direction: Direction }) 
                             <ReopenBillButton id={b.id} />
                           )}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   );
-                })
-              )}
-            </TableBody>
-          </Table>
+                })}
+              </div>
+
+              {/* Tabela em telas sm e maiores */}
+              <div className="hidden overflow-x-auto sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>{contactLabel}</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="w-28" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bills.map((b) => {
+                      const isOverdue = b.status === "PENDENTE" && b.dueDate < today;
+                      return (
+                        <TableRow key={b.id}>
+                          <TableCell className="whitespace-nowrap text-sm">
+                            {formatDate(b.dueDate)}
+                          </TableCell>
+                          <TableCell className="text-sm">{b.description}</TableCell>
+                          <TableCell className="text-sm">{b.contactName}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1.5 text-sm">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: b.category.color }}
+                              />
+                              {b.category.name}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={b.status} isOverdue={isOverdue} />
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-medium tabular-nums">
+                            {formatCurrency(b.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              {b.status === "PENDENTE" ? (
+                                <>
+                                  <MarkPaidButton id={b.id} direction={direction} />
+                                  <BillDialog
+                                    direction={direction}
+                                    categories={categories}
+                                    bill={{
+                                      id: b.id,
+                                      description: b.description,
+                                      amount: b.amount,
+                                      contactName: b.contactName,
+                                      dueDate: b.dueDate,
+                                      categoryId: b.categoryId,
+                                    }}
+                                  />
+                                  <DeleteBillButton id={b.id} />
+                                </>
+                              ) : (
+                                <ReopenBillButton id={b.id} />
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

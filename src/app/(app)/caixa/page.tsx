@@ -75,89 +75,139 @@ export default async function CaixaPage({
         <CardContent className="space-y-4 pt-6">
           <TransactionFilters categories={categories} />
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="w-20" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-8 text-center text-sm text-muted-foreground"
-                    >
-                      Nenhum lançamento encontrado.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  transactions.map((t) => (
-                    <TableRow key={t.id}>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {formatDate(t.date)}
-                      </TableCell>
-                      <TableCell className="text-sm">{t.description}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5 text-sm">
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: t.category.color }}
-                          />
-                          {t.category.name}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            t.type === "ENTRADA"
-                              ? "border-transparent bg-[#0ca30c]/10 text-[#0ca30c]"
-                              : "border-transparent bg-[#d03b3b]/10 text-[#d03b3b]"
-                          )}
-                        >
-                          {t.type === "ENTRADA" ? "Entrada" : "Saída"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell
+          {transactions.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhum lançamento encontrado.
+            </p>
+          ) : (
+            <>
+              {/* Cards empilhados em telas pequenas */}
+              <div className="space-y-2 sm:hidden">
+                {transactions.map((t) => (
+                  <div key={t.id} className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {t.description}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(t.date)}
+                        </p>
+                      </div>
+                      <p
                         className={cn(
-                          "text-right text-sm font-medium tabular-nums",
+                          "shrink-0 text-sm font-semibold tabular-nums",
                           t.type === "ENTRADA" ? "text-[#0ca30c]" : "text-[#d03b3b]"
                         )}
                       >
                         {t.type === "ENTRADA" ? "+" : "-"}
                         {formatCurrency(t.amount)}
-                      </TableCell>
-                      <TableCell>
-                        {t.billId ? null : (
-                          <div className="flex justify-end gap-1">
-                            <TransactionDialog
-                              categories={categories}
-                              transaction={{
-                                id: t.id,
-                                type: t.type,
-                                amount: t.amount,
-                                description: t.description,
-                                date: t.date,
-                                categoryId: t.categoryId,
-                              }}
-                            />
-                            <DeleteTransactionButton id={t.id} />
-                          </div>
-                        )}
-                      </TableCell>
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: t.category.color }}
+                        />
+                        {t.category.name}
+                      </span>
+                      {t.billId ? null : (
+                        <div className="flex gap-1">
+                          <TransactionDialog
+                            categories={categories}
+                            transaction={{
+                              id: t.id,
+                              type: t.type,
+                              amount: t.amount,
+                              description: t.description,
+                              date: t.date,
+                              categoryId: t.categoryId,
+                            }}
+                          />
+                          <DeleteTransactionButton id={t.id} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabela em telas sm e maiores */}
+              <div className="hidden overflow-x-auto sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="w-20" />
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {formatDate(t.date)}
+                        </TableCell>
+                        <TableCell className="text-sm">{t.description}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1.5 text-sm">
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: t.category.color }}
+                            />
+                            {t.category.name}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              t.type === "ENTRADA"
+                                ? "border-transparent bg-[#0ca30c]/10 text-[#0ca30c]"
+                                : "border-transparent bg-[#d03b3b]/10 text-[#d03b3b]"
+                            )}
+                          >
+                            {t.type === "ENTRADA" ? "Entrada" : "Saída"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            "text-right text-sm font-medium tabular-nums",
+                            t.type === "ENTRADA" ? "text-[#0ca30c]" : "text-[#d03b3b]"
+                          )}
+                        >
+                          {t.type === "ENTRADA" ? "+" : "-"}
+                          {formatCurrency(t.amount)}
+                        </TableCell>
+                        <TableCell>
+                          {t.billId ? null : (
+                            <div className="flex justify-end gap-1">
+                              <TransactionDialog
+                                categories={categories}
+                                transaction={{
+                                  id: t.id,
+                                  type: t.type,
+                                  amount: t.amount,
+                                  description: t.description,
+                                  date: t.date,
+                                  categoryId: t.categoryId,
+                                }}
+                              />
+                              <DeleteTransactionButton id={t.id} />
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
