@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  companyName  String
+  createdAt    DateTime @default(now())
+}
+
+enum CategoryType {
+  ENTRADA
+  SAIDA
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String
+  type          CategoryType
+  color         String
+  createdAt     DateTime      @default(now())
+  transactions  Transaction[]
+  bills         Bill[]
+
+  @@unique([name, type])
+}
+
+enum TransactionType {
+  ENTRADA
+  SAIDA
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  type        TransactionType
+  amount      Float
+  description String
+  date        DateTime
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id])
+  billId      String?         @unique
+  bill        Bill?           @relation(fields: [billId], references: [id])
+  createdAt   DateTime        @default(now())
+}
+
+enum BillDirection {
+  PAGAR
+  RECEBER
+}
+
+enum BillStatus {
+  PENDENTE
+  PAGO
+  ATRASADO
+}
+
+model Bill {
+  id          String        @id @default(cuid())
+  direction   BillDirection
+  description String
+  amount      Float
+  contactName String
+  dueDate     DateTime
+  status      BillStatus    @default(PENDENTE)
+  paidAt      DateTime?
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
+  transaction Transaction?
+  createdAt   DateTime      @default(now())
+}
