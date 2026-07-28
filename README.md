@@ -22,27 +22,31 @@ contas a pagar, contas a receber e relatórios de uma pequena empresa em um
 
 - [Next.js 16](https://nextjs.org) (App Router) + TypeScript
 - Tailwind CSS + [shadcn/ui](https://ui.shadcn.com)
-- [Prisma](https://www.prisma.io) + SQLite (banco de dados local, arquivo
-  `dev.db`)
+- [Prisma](https://www.prisma.io) + Postgres (hospedado no [Neon](https://neon.tech),
+  provisionado via integração da Vercel)
 - Autenticação própria (e-mail/senha) com cookie de sessão assinado
   (`jose` + `bcryptjs`)
 - Recharts para os gráficos
+- Publicado na [Vercel](https://vercel.com)
 
 ## Como rodar localmente
 
-Pré-requisitos: [Node.js](https://nodejs.org) 20.9 ou superior.
+Pré-requisitos: [Node.js](https://nodejs.org) 20.9 ou superior e um banco
+Postgres (local ou hospedado, ex: Neon).
 
 ```bash
 # 1. Instalar dependências
 npm install
 
-# 2. Criar o banco de dados e aplicar as migrações
+# 2. Configurar DATABASE_URL e DATABASE_URL_UNPOOLED no .env (veja abaixo)
+
+# 3. Aplicar as migrações
 npx prisma migrate dev
 
-# 3. Popular o banco com um usuário e categorias iniciais
+# 4. Popular o banco com um usuário e categorias iniciais
 npx prisma db seed
 
-# 4. Rodar o servidor de desenvolvimento
+# 5. Rodar o servidor de desenvolvimento
 npm run dev
 ```
 
@@ -82,9 +86,15 @@ src/proxy.ts               Protege as rotas autenticadas
 
 Veja `.env`:
 
-- `DATABASE_URL`: caminho do banco SQLite (padrão: `file:./dev.db`)
+- `DATABASE_URL`: conexão Postgres *pooled*, usada pela aplicação em tempo
+  de execução.
+- `DATABASE_URL_UNPOOLED`: conexão Postgres direta, usada pelo Prisma CLI
+  para rodar migrações (configurada em `prisma.config.ts`).
 - `AUTH_SECRET`: chave usada para assinar o cookie de sessão. Gere uma nova
   em produção com:
   ```bash
   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   ```
+
+Em produção (Vercel), essas variáveis já ficam configuradas automaticamente
+pela integração do banco de dados (Neon) e por `vercel env add`.

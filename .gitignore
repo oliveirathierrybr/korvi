@@ -45,3 +45,6 @@ next-env.d.ts
 # banco de dados local (dados reais da empresa não devem ir para o git)
 *.db
 *.db-journal
+
+.vercel
+.env*
