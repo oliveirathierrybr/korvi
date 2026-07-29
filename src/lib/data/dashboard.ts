@@ -33,39 +33,48 @@ export async function getDashboardData() {
   const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
   const sixMonthsAgoStart = new Date(monthStart.getFullYear(), monthStart.getMonth() - 5, 1);
 
-  const [entradaAgg, saidaAgg, monthEntradaAgg, monthSaidaAgg, sixMonthTx, upcomingBills, recentTx] =
-    await Promise.all([
-      prisma.transaction.aggregate({
-        where: { type: "ENTRADA" },
-        _sum: { amount: true },
-      }),
-      prisma.transaction.aggregate({
-        where: { type: "SAIDA" },
-        _sum: { amount: true },
-      }),
-      prisma.transaction.aggregate({
-        where: { type: "ENTRADA", date: { gte: monthStart, lt: nextMonthStart } },
-        _sum: { amount: true },
-      }),
-      prisma.transaction.aggregate({
-        where: { type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
-        _sum: { amount: true },
-      }),
-      prisma.transaction.findMany({
-        where: { date: { gte: sixMonthsAgoStart } },
-        select: { type: true, amount: true, date: true },
-      }),
-      prisma.bill.findMany({
-        where: { status: "PENDENTE", dueDate: { lt: in7Days } },
-        include: { category: true },
-        orderBy: { dueDate: "asc" },
-      }),
-      prisma.transaction.findMany({
-        take: 6,
-        orderBy: { date: "desc" },
-        include: { category: true },
-      }),
-    ]);
+  const [
+    entradaAgg,
+    saidaAgg,
+    monthEntradaAgg,
+    monthSaidaAgg,
+    sixMonthTx,
+    upcomingBills,
+    recentTx,
+    categories,
+  ] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: { type: "ENTRADA" },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { type: "SAIDA" },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { type: "ENTRADA", date: { gte: monthStart, lt: nextMonthStart } },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.findMany({
+      where: { date: { gte: sixMonthsAgoStart } },
+      select: { type: true, amount: true, date: true, categoryId: true },
+    }),
+    prisma.bill.findMany({
+      where: { status: "PENDENTE", dueDate: { lt: in7Days } },
+      include: { category: true },
+      orderBy: { dueDate: "asc" },
+    }),
+    prisma.transaction.findMany({
+      take: 6,
+      orderBy: { date: "desc" },
+      include: { category: true },
+    }),
+    prisma.category.findMany(),
+  ]);
 
   const totalEntradas = entradaAgg._sum.amount ?? 0;
   const totalSaidas = saidaAgg._sum.amount ?? 0;
@@ -95,23 +104,25 @@ export async function getDashboardData() {
     };
   });
 
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
   const categoryTotals = new Map<
     string,
     { name: string; color: string; total: number }
   >();
 
-  const monthSaidaTx = await prisma.transaction.findMany({
-    where: { type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
-    include: { category: true },
-  });
-  for (const tx of monthSaidaTx) {
+  for (const tx of sixMonthTx) {
+    if (tx.type !== "SAIDA" || tx.date < monthStart || tx.date >= nextMonthStart) {
+      continue;
+    }
+    const category = categoryById.get(tx.categoryId);
+    if (!category) continue;
     const existing = categoryTotals.get(tx.categoryId);
     if (existing) {
       existing.total += tx.amount;
     } else {
       categoryTotals.set(tx.categoryId, {
-        name: tx.category.name,
-        color: tx.category.color,
+        name: category.name,
+        color: category.color,
         total: tx.amount,
       });
     }
