@@ -16,7 +16,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen w-full">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-background md:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <SidebarNav />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col md:pl-64">

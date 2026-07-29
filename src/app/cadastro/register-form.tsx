@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Building2, IdCard, User, Mail, Lock } from "lucide-react";
 import { registerAction, type RegisterState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthInput } from "@/components/auth-input";
 import { formatCnpj } from "@/lib/cnpj";
 
 const initialState: RegisterState = {};
@@ -26,7 +27,8 @@ export function RegisterForm() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="companyName">Nome da empresa</Label>
-          <Input
+          <AuthInput
+            icon={Building2}
             id="companyName"
             name="companyName"
             placeholder="Minha Empresa Ltda"
@@ -36,7 +38,8 @@ export function RegisterForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="cnpj">CNPJ</Label>
-          <Input
+          <AuthInput
+            icon={IdCard}
             id="cnpj"
             name="cnpj"
             value={cnpj}
@@ -50,7 +53,8 @@ export function RegisterForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="name">Seu nome</Label>
-        <Input
+        <AuthInput
+          icon={User}
           id="name"
           name="name"
           placeholder="Seu nome completo"
@@ -60,7 +64,8 @@ export function RegisterForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">E-mail</Label>
-        <Input
+        <AuthInput
+          icon={Mail}
           id="email"
           name="email"
           type="email"
@@ -72,7 +77,8 @@ export function RegisterForm() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="password">Senha</Label>
-          <Input
+          <AuthInput
+            icon={Lock}
             id="password"
             name="password"
             type="password"
@@ -86,7 +92,8 @@ export function RegisterForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Confirmar senha</Label>
-          <Input
+          <AuthInput
+            icon={Lock}
             id="confirmPassword"
             name="confirmPassword"
             type="password"
@@ -110,7 +117,7 @@ export function RegisterForm() {
       ) : null}
       <Button
         type="submit"
-        className="w-full"
+        className="h-11 w-full rounded-lg"
         disabled={isPending || passwordsMismatch}
       >
         {isPending ? "Criando conta..." : "Criar conta"}

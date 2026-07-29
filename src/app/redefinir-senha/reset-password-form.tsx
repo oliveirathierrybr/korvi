@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Lock } from "lucide-react";
 import {
   resetPasswordAction,
   type ResetPasswordState,
 } from "@/lib/actions/password-reset";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthInput } from "@/components/auth-input";
 
 const initialState: ResetPasswordState = {};
 
@@ -26,7 +27,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <input type="hidden" name="token" value={token} />
       <div className="space-y-2">
         <Label htmlFor="password">Nova senha</Label>
-        <Input
+        <AuthInput
+          icon={Lock}
           id="password"
           name="password"
           type="password"
@@ -40,7 +42,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
-        <Input
+        <AuthInput
+          icon={Lock}
           id="confirmPassword"
           name="confirmPassword"
           type="password"
@@ -63,7 +66,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       ) : null}
       <Button
         type="submit"
-        className="w-full"
+        className="h-11 w-full rounded-lg"
         disabled={isPending || passwordsMismatch}
       >
         {isPending ? "Salvando..." : "Redefinir senha"}
