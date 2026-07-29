@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (never commit real secrets; .env.example is a template, safe to commit)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -45,6 +46,3 @@ next-env.d.ts
 # banco de dados local (dados reais da empresa não devem ir para o git)
 *.db
 *.db-journal
-
-.vercel
-.env*
