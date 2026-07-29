@@ -12,14 +12,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center border-b border-sidebar-border px-6">
-        <Logo size={26} wordmarkClassName="text-lg" />
+        <Link href="/dashboard" onClick={onNavigate}>
+          <Logo size={26} wordmarkClassName="text-lg" />
+        </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link

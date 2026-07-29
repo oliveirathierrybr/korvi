@@ -15,7 +15,7 @@ export type NavItem = {
 };
 
 export const navItems: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/caixa", label: "Caixa", icon: ArrowLeftRight },
   { href: "/contas-a-pagar", label: "Contas a Pagar", icon: ArrowUpCircle },
   {

@@ -148,5 +148,5 @@ export async function resetPasswordAction(
     companyName: user.companyName,
   });
 
-  redirect("/");
+  redirect("/dashboard");
 }

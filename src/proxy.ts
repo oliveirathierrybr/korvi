@@ -16,7 +16,9 @@ async function hasValidSession(request: NextRequest) {
   }
 }
 
-const GUEST_ONLY_ROUTES = ["/login", "/cadastro"];
+// Rotas públicas que, se o usuário já estiver logado, redirecionam para o
+// painel — não faz sentido mostrar a home ou o login para quem já entrou.
+const GUEST_ONLY_ROUTES = ["/", "/login", "/cadastro"];
 const PUBLIC_ROUTES = ["/esqueci-senha", "/redefinir-senha"];
 
 export async function proxy(request: NextRequest) {
@@ -27,7 +29,7 @@ export async function proxy(request: NextRequest) {
 
   if (isGuestOnly) {
     if (authenticated) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return NextResponse.next();
   }

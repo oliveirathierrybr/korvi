@@ -80,7 +80,7 @@ export async function registerAction(
     companyName: user.companyName,
   });
 
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function loginAction(
@@ -115,7 +115,7 @@ export async function loginAction(
     companyName: user.companyName,
   });
 
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function logoutAction() {
