@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/format";
 import type { ActionResult } from "@/lib/actions/categories";
+import { requireUserId } from "@/lib/session";
 
 const billSchema = z.object({
   direction: z.enum(["PAGAR", "RECEBER"]),
@@ -35,16 +36,19 @@ export async function createBill(input: BillInput): Promise<ActionResult> {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const userId = await requireUserId();
+
   const category = await prisma.category.findUnique({
     where: { id: parsed.data.categoryId },
   });
   const expectedType = directionToTransactionType(parsed.data.direction);
-  if (!category || category.type !== expectedType) {
+  if (!category || category.userId !== userId || category.type !== expectedType) {
     return { error: "Categoria inválida para este tipo de conta." };
   }
 
   await prisma.bill.create({
     data: {
+      userId,
       direction: parsed.data.direction,
       description: parsed.data.description,
       amount: parsed.data.amount,
@@ -67,8 +71,10 @@ export async function updateBill(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const userId = await requireUserId();
+
   const existing = await prisma.bill.findUnique({ where: { id } });
-  if (!existing) {
+  if (!existing || existing.userId !== userId) {
     return { error: "Conta não encontrada." };
   }
   if (existing.status === "PAGO") {
@@ -81,7 +87,7 @@ export async function updateBill(
     where: { id: parsed.data.categoryId },
   });
   const expectedType = directionToTransactionType(parsed.data.direction);
-  if (!category || category.type !== expectedType) {
+  if (!category || category.userId !== userId || category.type !== expectedType) {
     return { error: "Categoria inválida para este tipo de conta." };
   }
 
@@ -102,11 +108,13 @@ export async function updateBill(
 }
 
 export async function deleteBill(id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+
   const existing = await prisma.bill.findUnique({
     where: { id },
     include: { transaction: true },
   });
-  if (!existing) {
+  if (!existing || existing.userId !== userId) {
     return { error: "Conta não encontrada." };
   }
 
@@ -122,8 +130,10 @@ export async function deleteBill(id: string): Promise<ActionResult> {
 }
 
 export async function markBillPaid(id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+
   const bill = await prisma.bill.findUnique({ where: { id } });
-  if (!bill) {
+  if (!bill || bill.userId !== userId) {
     return { error: "Conta não encontrada." };
   }
   if (bill.status === "PAGO") {
@@ -136,6 +146,7 @@ export async function markBillPaid(id: string): Promise<ActionResult> {
   await prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.create({
       data: {
+        userId,
         type,
         amount: bill.amount,
         description: bill.description,
@@ -154,11 +165,13 @@ export async function markBillPaid(id: string): Promise<ActionResult> {
 }
 
 export async function reopenBill(id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+
   const bill = await prisma.bill.findUnique({
     where: { id },
     include: { transaction: true },
   });
-  if (!bill) {
+  if (!bill || bill.userId !== userId) {
     return { error: "Conta não encontrada." };
   }
   if (bill.status !== "PAGO") {

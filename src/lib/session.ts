@@ -62,3 +62,16 @@ export async function getSession(): Promise<SessionPayload | null> {
   if (!token) return null;
   return verifySessionToken(token);
 }
+
+/**
+ * Use in Server Actions and data-loading functions that must never run
+ * without an authenticated user — proxy.ts already gates page navigation,
+ * but Server Actions are invoked directly and must verify on their own.
+ */
+export async function requireUserId(): Promise<string> {
+  const session = await getSession();
+  if (!session) {
+    throw new Error("Não autenticado.");
+  }
+  return session.userId;
+}

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Category" ALTER COLUMN "userId" SET NOT NULL;
+ALTER TABLE "Transaction" ALTER COLUMN "userId" SET NOT NULL;
+ALTER TABLE "Bill" ALTER COLUMN "userId" SET NOT NULL;

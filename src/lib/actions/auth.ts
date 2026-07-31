@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { clearSessionCookie, setSessionCookie } from "@/lib/session";
 import { isValidCnpj, onlyDigits } from "@/lib/cnpj";
+import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
+import { categoryColorLight } from "@/lib/colors";
 
 const loginSchema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -71,6 +73,15 @@ export async function registerAction(
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
     data: { companyName, cnpj, name, email, passwordHash },
+  });
+
+  await prisma.category.createMany({
+    data: DEFAULT_CATEGORIES.map((c, i) => ({
+      userId: user.id,
+      name: c.name,
+      type: c.type,
+      color: categoryColorLight(i),
+    })),
   });
 
   await setSessionCookie({

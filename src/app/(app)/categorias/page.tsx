@@ -2,9 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { CategoryDialog } from "@/components/categories/category-dialog";
 import { DeleteCategoryButton } from "@/components/categories/delete-category-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireUserId } from "@/lib/session";
 
 export default async function CategoriasPage() {
+  const userId = await requireUserId();
   const categories = await prisma.category.findMany({
+    where: { userId },
     orderBy: { name: "asc" },
   });
 

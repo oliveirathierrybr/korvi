@@ -21,7 +21,9 @@ export async function GET(request: NextRequest) {
   const fromParam = searchParams.get("from");
   const toParam = searchParams.get("to");
 
-  const where: { date?: { gte?: Date; lt?: Date } } = {};
+  const where: { userId: string; date?: { gte?: Date; lt?: Date } } = {
+    userId: session.userId,
+  };
   if (fromParam || toParam) {
     where.date = {};
     if (fromParam) where.date.gte = parseDateInput(fromParam);

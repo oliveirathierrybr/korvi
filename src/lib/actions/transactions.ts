@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/format";
 import type { ActionResult } from "@/lib/actions/categories";
+import { requireUserId } from "@/lib/session";
 
 const transactionSchema = z.object({
   type: z.enum(["ENTRADA", "SAIDA"]),
@@ -30,15 +31,18 @@ export async function createTransaction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const userId = await requireUserId();
+
   const category = await prisma.category.findUnique({
     where: { id: parsed.data.categoryId },
   });
-  if (!category || category.type !== parsed.data.type) {
+  if (!category || category.userId !== userId || category.type !== parsed.data.type) {
     return { error: "Categoria inválida para este tipo de lançamento." };
   }
 
   await prisma.transaction.create({
     data: {
+      userId,
       type: parsed.data.type,
       amount: parsed.data.amount,
       description: parsed.data.description,
@@ -60,8 +64,10 @@ export async function updateTransaction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const userId = await requireUserId();
+
   const existing = await prisma.transaction.findUnique({ where: { id } });
-  if (!existing) {
+  if (!existing || existing.userId !== userId) {
     return { error: "Lançamento não encontrado." };
   }
   if (existing.billId) {
@@ -74,7 +80,7 @@ export async function updateTransaction(
   const category = await prisma.category.findUnique({
     where: { id: parsed.data.categoryId },
   });
-  if (!category || category.type !== parsed.data.type) {
+  if (!category || category.userId !== userId || category.type !== parsed.data.type) {
     return { error: "Categoria inválida para este tipo de lançamento." };
   }
 
@@ -94,8 +100,10 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+
   const existing = await prisma.transaction.findUnique({ where: { id } });
-  if (!existing) {
+  if (!existing || existing.userId !== userId) {
     return { error: "Lançamento não encontrado." };
   }
   if (existing.billId) {

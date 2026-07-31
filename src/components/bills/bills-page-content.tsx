@@ -16,6 +16,7 @@ import {
   MarkPaidButton,
   ReopenBillButton,
 } from "@/components/bills/bill-actions";
+import { requireUserId } from "@/lib/session";
 
 type Direction = "PAGAR" | "RECEBER";
 
@@ -26,17 +27,18 @@ function startOfToday() {
 }
 
 export async function BillsPageContent({ direction }: { direction: Direction }) {
+  const userId = await requireUserId();
   const isPagar = direction === "PAGAR";
   const contactLabel = isPagar ? "Fornecedor" : "Cliente";
 
   const [bills, categories] = await Promise.all([
     prisma.bill.findMany({
-      where: { direction },
+      where: { userId, direction },
       include: { category: true },
       orderBy: { dueDate: "asc" },
     }),
     prisma.category.findMany({
-      where: { type: isPagar ? "SAIDA" : "ENTRADA" },
+      where: { userId, type: isPagar ? "SAIDA" : "ENTRADA" },
       orderBy: { name: "asc" },
     }),
   ]);

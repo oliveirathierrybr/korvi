@@ -16,6 +16,9 @@ model User {
   cnpj         String                @default("")
   createdAt    DateTime              @default(now())
   resetTokens  PasswordResetToken[]
+  categories   Category[]
+  transactions Transaction[]
+  bills        Bill[]
 }
 
 model PasswordResetToken {
@@ -37,6 +40,8 @@ enum CategoryType {
 
 model Category {
   id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
   type          CategoryType
   color         String
@@ -44,7 +49,8 @@ model Category {
   transactions  Transaction[]
   bills         Bill[]
 
-  @@unique([name, type])
+  @@unique([userId, name, type])
+  @@index([userId])
 }
 
 enum TransactionType {
@@ -54,6 +60,8 @@ enum TransactionType {
 
 model Transaction {
   id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   type        TransactionType
   amount      Float
   description String
@@ -63,6 +71,8 @@ model Transaction {
   billId      String?         @unique
   bill        Bill?           @relation(fields: [billId], references: [id])
   createdAt   DateTime        @default(now())
+
+  @@index([userId])
 }
 
 enum BillDirection {
@@ -78,6 +88,8 @@ enum BillStatus {
 
 model Bill {
   id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   direction   BillDirection
   description String
   amount      Float
@@ -89,4 +101,6 @@ model Bill {
   category    Category      @relation(fields: [categoryId], references: [id])
   transaction Transaction?
   createdAt   DateTime      @default(now())
+
+  @@index([userId])
 }

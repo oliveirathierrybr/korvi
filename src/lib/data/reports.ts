@@ -19,7 +19,10 @@ function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-export async function getReportsData(range: { from?: Date; to?: Date }) {
+export async function getReportsData(
+  userId: string,
+  range: { from?: Date; to?: Date }
+) {
   const now = new Date();
   const defaultFrom = new Date(now.getFullYear(), now.getMonth() - 11, 1);
   const from = range.from ?? defaultFrom;
@@ -27,7 +30,7 @@ export async function getReportsData(range: { from?: Date; to?: Date }) {
   const toExclusive = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
 
   const transactions = await prisma.transaction.findMany({
-    where: { date: { gte: from, lt: toExclusive } },
+    where: { userId, date: { gte: from, lt: toExclusive } },
     include: { category: true },
     orderBy: { date: "asc" },
   });

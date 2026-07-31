@@ -5,17 +5,19 @@ import { CategoryPieChart } from "@/components/dashboard/category-pie-chart";
 import { getReportsData } from "@/lib/data/reports";
 import { formatCurrency, parseDateInput, toDateInputValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { requireUserId } from "@/lib/session";
 
 export default async function RelatoriosPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  const userId = await requireUserId();
   const params = await searchParams;
   const from = params.from ? parseDateInput(params.from) : undefined;
   const to = params.to ? parseDateInput(params.to) : undefined;
 
-  const data = await getReportsData({ from, to });
+  const data = await getReportsData(userId, { from, to });
 
   return (
     <div className="space-y-6">

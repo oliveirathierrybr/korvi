@@ -9,7 +9,8 @@ import { getDashboardData } from "@/lib/data/dashboard";
 import { getSession } from "@/lib/session";
 
 export default async function DashboardPage() {
-  const [data, session] = await Promise.all([getDashboardData(), getSession()]);
+  const session = await getSession();
+  const data = await getDashboardData(session!.userId);
   const firstName = session?.name.split(" ")[0] ?? "";
 
   return (

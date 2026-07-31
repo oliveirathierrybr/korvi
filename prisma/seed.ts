@@ -2,24 +2,12 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { categoryColorLight } from "../src/lib/colors";
+import { DEFAULT_CATEGORIES } from "../src/lib/default-categories";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
 const prisma = new PrismaClient({ adapter });
-
-const categories: { name: string; type: "ENTRADA" | "SAIDA" }[] = [
-  { name: "Vendas", type: "ENTRADA" },
-  { name: "Serviços", type: "ENTRADA" },
-  { name: "Outras Receitas", type: "ENTRADA" },
-  { name: "Fornecedores", type: "SAIDA" },
-  { name: "Salários", type: "SAIDA" },
-  { name: "Aluguel", type: "SAIDA" },
-  { name: "Impostos", type: "SAIDA" },
-  { name: "Marketing", type: "SAIDA" },
-  { name: "Despesas Operacionais", type: "SAIDA" },
-  { name: "Outras Despesas", type: "SAIDA" },
-];
 
 async function main() {
   const email = "admin@empresa.com";
@@ -34,15 +22,17 @@ async function main() {
       passwordHash,
       name: "Administrador",
       companyName: "Minha Empresa",
+      cnpj: "",
     },
   });
 
-  for (let i = 0; i < categories.length; i++) {
-    const c = categories[i];
+  for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
+    const c = DEFAULT_CATEGORIES[i];
     await prisma.category.upsert({
-      where: { name_type: { name: c.name, type: c.type } },
+      where: { userId_name_type: { userId: user.id, name: c.name, type: c.type } },
       update: {},
       create: {
+        userId: user.id,
         name: c.name,
         type: c.type,
         color: categoryColorLight(i),

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/session";
 
 const categorySchema = z.object({
   name: z.string().trim().min(1, "Informe um nome.").max(60),
@@ -22,16 +23,18 @@ export async function createCategory(input: {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  const userId = await requireUserId();
+
   const existing = await prisma.category.findUnique({
     where: {
-      name_type: { name: parsed.data.name, type: parsed.data.type },
+      userId_name_type: { userId, name: parsed.data.name, type: parsed.data.type },
     },
   });
   if (existing) {
     return { error: "Já existe uma categoria com esse nome e tipo." };
   }
 
-  await prisma.category.create({ data: parsed.data });
+  await prisma.category.create({ data: { ...parsed.data, userId } });
   revalidatePath("/categorias");
   revalidatePath("/caixa");
   revalidatePath("/contas-a-pagar");
@@ -40,6 +43,13 @@ export async function createCategory(input: {
 }
 
 export async function deleteCategory(id: string): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  const category = await prisma.category.findUnique({ where: { id } });
+  if (!category || category.userId !== userId) {
+    return { error: "Categoria não encontrada." };
+  }
+
   const inUse = await prisma.transaction.findFirst({
     where: { categoryId: id },
     select: { id: true },

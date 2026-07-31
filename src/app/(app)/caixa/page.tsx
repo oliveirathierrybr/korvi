@@ -15,15 +15,17 @@ import { TransactionDialog } from "@/components/transactions/transaction-dialog"
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
 import type { Prisma } from "@/generated/prisma/client";
+import { requireUserId } from "@/lib/session";
 
 export default async function CaixaPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  const userId = await requireUserId();
   const params = await searchParams;
 
-  const where: Prisma.TransactionWhereInput = {};
+  const where: Prisma.TransactionWhereInput = { userId };
   if (params.type === "ENTRADA" || params.type === "SAIDA") {
     where.type = params.type;
   }
@@ -42,7 +44,7 @@ export default async function CaixaPage({
       include: { category: true },
       orderBy: { date: "desc" },
     }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({ where: { userId }, orderBy: { name: "asc" } }),
   ]);
 
   const totalEntradas = transactions

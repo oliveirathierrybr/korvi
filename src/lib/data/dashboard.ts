@@ -25,7 +25,7 @@ const MONTH_LABELS = [
   "Dez",
 ];
 
-export async function getDashboardData() {
+export async function getDashboardData(userId: string) {
   const today = startOfDay(new Date());
   const in7Days = new Date(today);
   in7Days.setDate(in7Days.getDate() + 7);
@@ -44,36 +44,37 @@ export async function getDashboardData() {
     categories,
   ] = await Promise.all([
     prisma.transaction.aggregate({
-      where: { type: "ENTRADA" },
+      where: { userId, type: "ENTRADA" },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: { type: "SAIDA" },
+      where: { userId, type: "SAIDA" },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: { type: "ENTRADA", date: { gte: monthStart, lt: nextMonthStart } },
+      where: { userId, type: "ENTRADA", date: { gte: monthStart, lt: nextMonthStart } },
       _sum: { amount: true },
     }),
     prisma.transaction.aggregate({
-      where: { type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
+      where: { userId, type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
       _sum: { amount: true },
     }),
     prisma.transaction.findMany({
-      where: { date: { gte: sixMonthsAgoStart } },
+      where: { userId, date: { gte: sixMonthsAgoStart } },
       select: { type: true, amount: true, date: true, categoryId: true },
     }),
     prisma.bill.findMany({
-      where: { status: "PENDENTE", dueDate: { lt: in7Days } },
+      where: { userId, status: "PENDENTE", dueDate: { lt: in7Days } },
       include: { category: true },
       orderBy: { dueDate: "asc" },
     }),
     prisma.transaction.findMany({
+      where: { userId },
       take: 6,
       orderBy: { date: "desc" },
       include: { category: true },
     }),
-    prisma.category.findMany(),
+    prisma.category.findMany({ where: { userId } }),
   ]);
 
   const totalEntradas = entradaAgg._sum.amount ?? 0;
