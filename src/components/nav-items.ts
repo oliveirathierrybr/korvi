@@ -5,6 +5,7 @@ import {
   ArrowDownCircle,
   BarChart3,
   Tags,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,4 +26,5 @@ export const navItems: NavItem[] = [
   },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/categorias", label: "Categorias", icon: Tags },
+  { href: "/assistente", label: "Assistente IA", icon: Bot },
 ];
