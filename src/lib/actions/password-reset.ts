@@ -12,6 +12,7 @@ import {
   RESET_TOKEN_TTL_MS,
 } from "@/lib/password-reset";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
 
 async function getOrigin() {
   const h = await headers();
@@ -39,6 +40,15 @@ export async function forgotPasswordAction(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const ip = await getClientIp();
+  const [allowedByEmail, allowedByIp] = await Promise.all([
+    checkRateLimit(`forgot:email:${parsed.data.email}`, 3, 60 * 60 * 1000),
+    checkRateLimit(`forgot:ip:${ip}`, 10, 60 * 60 * 1000),
+  ]);
+  if (!allowedByEmail || !allowedByIp) {
+    return { error: RATE_LIMIT_MESSAGE };
   }
 
   const user = await prisma.user.findUnique({
@@ -108,6 +118,12 @@ export async function resetPasswordAction(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const ip = await getClientIp();
+  const allowed = await checkRateLimit(`reset:ip:${ip}`, 15, 15 * 60 * 1000);
+  if (!allowed) {
+    return { error: RATE_LIMIT_MESSAGE };
   }
 
   const tokenHash = hashResetToken(parsed.data.token);

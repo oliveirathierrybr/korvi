@@ -21,6 +21,17 @@ model User {
   bills        Bill[]
 }
 
+// Cada linha é uma "tentativa" (login, cadastro, pedido de redefinição de
+// senha) contada dentro de uma janela de tempo — usado para limitar
+// força bruta e abuso sem depender de infraestrutura externa (Redis etc.).
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
 model PasswordResetToken {
   id         String    @id @default(cuid())
   tokenHash  String    @unique

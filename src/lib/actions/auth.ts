@@ -8,6 +8,7 @@ import { clearSessionCookie, setSessionCookie } from "@/lib/session";
 import { isValidCnpj, onlyDigits } from "@/lib/cnpj";
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
 import { categoryColorLight } from "@/lib/colors";
+import { checkRateLimit, getClientIp, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -55,6 +56,12 @@ export async function registerAction(
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const ip = await getClientIp();
+  const allowed = await checkRateLimit(`register:ip:${ip}`, 8, 60 * 60 * 1000);
+  if (!allowed) {
+    return { error: RATE_LIMIT_MESSAGE };
   }
 
   const { companyName, name, email, password } = parsed.data;
@@ -108,6 +115,15 @@ export async function loginAction(
   }
 
   const { email, password } = parsed.data;
+
+  const ip = await getClientIp();
+  const [allowedByEmail, allowedByIp] = await Promise.all([
+    checkRateLimit(`login:email:${email}`, 8, 15 * 60 * 1000),
+    checkRateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000),
+  ]);
+  if (!allowedByEmail || !allowedByIp) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
