@@ -14,8 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { TransactionDialog } from "@/components/transactions/transaction-dialog";
 import { TransactionFilters } from "@/components/transactions/transaction-filters";
 import { DeleteTransactionButton } from "@/components/transactions/delete-transaction-button";
+import { Pagination } from "@/components/pagination";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireUserId } from "@/lib/session";
+
+const PAGE_SIZE = 30;
 
 export default async function CaixaPage({
   searchParams,
@@ -38,22 +41,39 @@ export default async function CaixaPage({
     if (params.to) where.date.lte = new Date(`${params.to}T23:59:59`);
   }
 
-  const [transactions, categories] = await Promise.all([
+  const requestedPage = Number.parseInt(params.page ?? "1", 10);
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+
+  // Totais do período são somados no próprio Postgres (via groupBy) em vez
+  // de reduzir sobre a lista carregada — a lista agora só traz uma página
+  // por vez, e o total precisa continuar refletindo o período inteiro.
+  const [transactions, categories, totalCount, totalsByType] = await Promise.all([
     prisma.transaction.findMany({
       where,
       include: { category: true },
       orderBy: { date: "desc" },
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
     }),
     prisma.category.findMany({ where: { userId }, orderBy: { name: "asc" } }),
+    prisma.transaction.count({ where }),
+    prisma.transaction.groupBy({ by: ["type"], where, _sum: { amount: true } }),
   ]);
 
-  const totalEntradas = transactions
-    .filter((t) => t.type === "ENTRADA")
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalSaidas = transactions
-    .filter((t) => t.type === "SAIDA")
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const totalEntradas = totalsByType.find((g) => g.type === "ENTRADA")?._sum.amount ?? 0;
+  const totalSaidas = totalsByType.find((g) => g.type === "SAIDA")?._sum.amount ?? 0;
   const saldo = totalEntradas - totalSaidas;
+
+  function buildHref(targetPage: number) {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value && key !== "page") search.set(key, value);
+    }
+    if (targetPage > 1) search.set("page", String(targetPage));
+    const qs = search.toString();
+    return qs ? `/caixa?${qs}` : "/caixa";
+  }
 
   return (
     <div className="space-y-6">
@@ -208,6 +228,8 @@ export default async function CaixaPage({
                   </TableBody>
                 </Table>
               </div>
+
+              <Pagination page={page} totalPages={totalPages} buildHref={buildHref} />
             </>
           )}
         </CardContent>

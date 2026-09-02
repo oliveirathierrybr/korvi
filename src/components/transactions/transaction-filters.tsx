@@ -34,6 +34,10 @@ export function TransactionFilters({
     } else {
       params.set(key, value);
     }
+    // Qualquer mudança de filtro pode reduzir o total de páginas — volta
+    // para a primeira página em vez de manter uma página que pode não
+    // existir mais no resultado filtrado.
+    params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
   }
 

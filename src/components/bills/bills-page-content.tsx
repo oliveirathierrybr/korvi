@@ -16,9 +16,12 @@ import {
   MarkPaidButton,
   ReopenBillButton,
 } from "@/components/bills/bill-actions";
+import { Pagination } from "@/components/pagination";
 import { requireUserId } from "@/lib/session";
 
 type Direction = "PAGAR" | "RECEBER";
+
+const PAGE_SIZE = 30;
 
 function startOfToday() {
   const d = new Date();
@@ -26,31 +29,55 @@ function startOfToday() {
   return d;
 }
 
-export async function BillsPageContent({ direction }: { direction: Direction }) {
+export async function BillsPageContent({
+  direction,
+  searchParams,
+}: {
+  direction: Direction;
+  searchParams?: { page?: string };
+}) {
   const userId = await requireUserId();
   const isPagar = direction === "PAGAR";
   const contactLabel = isPagar ? "Fornecedor" : "Cliente";
+  const today = startOfToday();
 
-  const [bills, categories] = await Promise.all([
+  const requestedPage = Number.parseInt(searchParams?.page ?? "1", 10);
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const where = { userId, direction };
+
+  // Totais somados no próprio Postgres (groupBy/aggregate) em vez de reduzir
+  // sobre a lista inteira — a lista abaixo agora só traz uma página por vez.
+  const [bills, categories, totalCount, totalsByStatus, overdueAgg] = await Promise.all([
     prisma.bill.findMany({
-      where: { userId, direction },
+      where,
       include: { category: true },
       orderBy: { dueDate: "asc" },
+      take: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
     }),
     prisma.category.findMany({
       where: { userId, type: isPagar ? "SAIDA" : "ENTRADA" },
       orderBy: { name: "asc" },
     }),
+    prisma.bill.count({ where }),
+    prisma.bill.groupBy({ by: ["status"], where, _sum: { amount: true } }),
+    prisma.bill.aggregate({
+      where: { ...where, status: "PENDENTE", dueDate: { lt: today } },
+      _sum: { amount: true },
+      _count: true,
+    }),
   ]);
 
-  const today = startOfToday();
-  const pending = bills.filter((b) => b.status === "PENDENTE");
-  const overdue = pending.filter((b) => b.dueDate < today);
-  const totalPending = pending.reduce((sum, b) => sum + b.amount, 0);
-  const totalOverdue = overdue.reduce((sum, b) => sum + b.amount, 0);
-  const totalPaid = bills
-    .filter((b) => b.status === "PAGO")
-    .reduce((sum, b) => sum + b.amount, 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const totalPending = totalsByStatus.find((g) => g.status === "PENDENTE")?._sum.amount ?? 0;
+  const totalPaid = totalsByStatus.find((g) => g.status === "PAGO")?._sum.amount ?? 0;
+  const totalOverdue = overdueAgg._sum.amount ?? 0;
+  const overdueCount = overdueAgg._count;
+
+  const basePath = isPagar ? "/contas-a-pagar" : "/contas-a-receber";
+  function buildHref(targetPage: number) {
+    return targetPage > 1 ? `${basePath}?page=${targetPage}` : basePath;
+  }
 
   return (
     <div className="space-y-6">
@@ -78,7 +105,7 @@ export async function BillsPageContent({ direction }: { direction: Direction }) 
           label="Vencidas"
           value={totalOverdue}
           tone="critical"
-          hint={`${overdue.length} conta(s)`}
+          hint={`${overdueCount} conta(s)`}
         />
         <SummaryChip
           label={isPagar ? "Total pago" : "Total recebido"}
@@ -91,7 +118,7 @@ export async function BillsPageContent({ direction }: { direction: Direction }) 
         <CardContent className="pt-6">
           {bills.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Nenhuma conta cadastrada.
+              {totalCount === 0 ? "Nenhuma conta cadastrada." : "Nenhuma conta nesta página."}
             </p>
           ) : (
             <>
@@ -222,6 +249,8 @@ export async function BillsPageContent({ direction }: { direction: Direction }) 
                   </TableBody>
                 </Table>
               </div>
+
+              <Pagination page={page} totalPages={totalPages} buildHref={buildHref} />
             </>
           )}
         </CardContent>

@@ -1,5 +1,9 @@
 import { BillsPageContent } from "@/components/bills/bills-page-content";
 
-export default function ContasAReceberPage() {
-  return <BillsPageContent direction="RECEBER" />;
+export default async function ContasAReceberPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  return <BillsPageContent direction="RECEBER" searchParams={await searchParams} />;
 }
