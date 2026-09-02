@@ -3,6 +3,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUserId, getSession } from "@/lib/session";
 import { buildFinancialContext } from "@/lib/data/assistant-context";
+import { checkRateLimit, RATE_LIMIT_MESSAGE } from "@/lib/rate-limit";
+
+// Cada pergunta custa uma chamada de API paga (claude-opus-5) — sem limite,
+// um cliente com bug (ou uso mal-intencionado da própria conta) poderia gerar
+// uma fatura de API bem maior do que o esperado. 20/hora é folgado para uso
+// legítimo (ninguém conversa com o assistente nesse ritmo) e barato de
+// ajustar depois via um segundo limite diário, se necessário.
+const ASSISTANT_RATE_LIMIT = 20;
+const ASSISTANT_RATE_WINDOW_MS = 60 * 60 * 1000;
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -35,6 +44,15 @@ export async function askAssistant(
   }
   if (trimmed.length > MAX_QUESTION_LENGTH) {
     return { error: "Pergunta muito longa. Tente resumir." };
+  }
+
+  const allowed = await checkRateLimit(
+    `assistant:user:${userId}`,
+    ASSISTANT_RATE_LIMIT,
+    ASSISTANT_RATE_WINDOW_MS
+  );
+  if (!allowed) {
+    return { error: RATE_LIMIT_MESSAGE };
   }
 
   let client: Anthropic;
