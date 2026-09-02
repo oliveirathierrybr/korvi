@@ -76,6 +76,12 @@ export async function updateTransaction(
         "Este lançamento veio da baixa de uma conta e não pode ser editado diretamente.",
     };
   }
+  if (existing.bankTransactionId) {
+    return {
+      error:
+        "Este lançamento veio de uma movimentação bancária conciliada e não pode ser editado diretamente.",
+    };
+  }
 
   const category = await prisma.category.findUnique({
     where: { id: parsed.data.categoryId },
@@ -110,6 +116,12 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
     return {
       error:
         "Este lançamento veio da baixa de uma conta. Para removê-lo, reabra a conta correspondente.",
+    };
+  }
+  if (existing.bankTransactionId) {
+    return {
+      error:
+        "Este lançamento veio de uma movimentação bancária conciliada e não pode ser removido diretamente.",
     };
   }
 

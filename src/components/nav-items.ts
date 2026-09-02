@@ -6,6 +6,7 @@ import {
   BarChart3,
   Tags,
   Bot,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 
@@ -17,6 +18,7 @@ export type NavItem = {
 
 export const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/contas-bancarias", label: "Contas bancárias", icon: Landmark },
   { href: "/caixa", label: "Caixa", icon: ArrowLeftRight },
   { href: "/contas-a-pagar", label: "Contas a Pagar", icon: ArrowUpCircle },
   {

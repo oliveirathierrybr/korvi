@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id           String                @id @default(cuid())
-  email        String                @unique
-  passwordHash String
-  name         String
-  companyName  String
-  cnpj         String                @default("")
-  createdAt    DateTime              @default(now())
-  resetTokens  PasswordResetToken[]
-  categories   Category[]
-  transactions Transaction[]
-  bills        Bill[]
+  id                String                @id @default(cuid())
+  email             String                @unique
+  passwordHash      String
+  name              String
+  companyName       String
+  cnpj              String                @default("")
+  createdAt         DateTime              @default(now())
+  resetTokens       PasswordResetToken[]
+  categories        Category[]
+  transactions      Transaction[]
+  bills             Bill[]
+  bankConsents      BankConsent[]
+  bankAccounts      BankAccount[]
+  bankTransactions  BankTransaction[]
+  bankCategoryRules BankCategoryRule[]
+  auditLogs         AuditLog[]
 }
 
 // Cada linha é uma "tentativa" (login, cadastro, pedido de redefinição de
@@ -50,15 +55,17 @@ enum CategoryType {
 }
 
 model Category {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  type          CategoryType
-  color         String
-  createdAt     DateTime      @default(now())
-  transactions  Transaction[]
-  bills         Bill[]
+  id               String             @id @default(cuid())
+  userId           String
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  type             CategoryType
+  color            String
+  createdAt        DateTime           @default(now())
+  transactions     Transaction[]
+  bills            Bill[]
+  bankTransactions BankTransaction[]
+  bankCategoryRules BankCategoryRule[]
 
   @@unique([userId, name, type])
   @@index([userId])
@@ -69,19 +76,24 @@ enum TransactionType {
   SAIDA
 }
 
+// Um Transaction pode ter no máximo uma origem — lançamento manual, baixa de
+// Bill (billId) ou importação bancária conciliada (bankTransactionId) —
+// ainda que o schema não imponha isso, o código nunca deve setar os dois.
 model Transaction {
-  id          String          @id @default(cuid())
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        TransactionType
-  amount      Float
-  description String
-  date        DateTime
-  categoryId  String
-  category    Category        @relation(fields: [categoryId], references: [id])
-  billId      String?         @unique
-  bill        Bill?           @relation(fields: [billId], references: [id])
-  createdAt   DateTime        @default(now())
+  id                String           @id @default(cuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              TransactionType
+  amount            Float
+  description       String
+  date              DateTime
+  categoryId        String
+  category          Category         @relation(fields: [categoryId], references: [id])
+  billId            String?          @unique
+  bill              Bill?            @relation(fields: [billId], references: [id])
+  bankTransactionId String?          @unique
+  bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
+  createdAt         DateTime         @default(now())
 
   @@index([userId])
 }
@@ -114,4 +126,131 @@ model Bill {
   createdAt   DateTime      @default(now())
 
   @@index([userId])
+}
+
+// ── Conexão bancária (Open Finance) ────────────────────────────────────────
+// Ver docs/OPEN_FINANCE.md para a arquitetura completa (BankIntegrationService
+// / MockBankProvider / OpenFinanceProvider / BankSyncService).
+
+enum BankConsentStatus {
+  AWAITING_AUTHORISATION
+  AUTHORISED
+  REJECTED
+  // EXPIRED nunca é gravado por um job — é calculado em runtime a partir de
+  // `expiresAt`, do mesmo jeito que BillStatus.ATRASADO nunca é escrito, só
+  // calculado comparando `dueDate < today` na hora de exibir.
+  EXPIRED
+  REVOKED
+  ERROR
+}
+
+enum BankConnectionStatus {
+  ATIVA
+  ERRO
+  DESCONECTADA
+}
+
+enum BankTransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum BankTransactionStatus {
+  PENDENTE
+  CONCILIADO
+  IGNORADO
+}
+
+model BankConsent {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        String // "mock" | "open_finance" — de qual provider veio
+  institutionId   String
+  institutionName String
+  consentId       String            @unique // id externo devolvido pelo provider
+  state           String            @unique // anti-CSRF, gerado em initiateConsent, validado no callback
+  status          BankConsentStatus @default(AWAITING_AUTHORISATION)
+  scopes          String[]
+  createdAt       DateTime          @default(now())
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  lastSyncAt      DateTime?
+  accounts        BankAccount[]
+
+  @@index([userId])
+}
+
+model BankAccount {
+  id                  String               @id @default(cuid())
+  userId              String
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentId           String
+  consent             BankConsent          @relation(fields: [consentId], references: [id], onDelete: Cascade)
+  institutionId       String
+  institutionName     String
+  accountType         String
+  accountNumberMasked String
+  branchMasked        String?
+  currency            String               @default("BRL")
+  balance             Float                @default(0)
+  balanceUpdatedAt    DateTime?
+  connectionStatus    BankConnectionStatus @default(ATIVA)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  transactions        BankTransaction[]
+
+  @@index([userId])
+}
+
+model BankTransaction {
+  id                    String                 @id @default(cuid())
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccountId         String
+  bankAccount           BankAccount            @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  externalTransactionId String // chave de idempotência — ver BankSyncService
+  transactionDate       DateTime
+  description           String
+  amount                Float // sempre positivo (normalizado); o sinal vem de `type`
+  type                  BankTransactionType
+  categoryId            String?
+  category              Category?              @relation(fields: [categoryId], references: [id])
+  status                BankTransactionStatus  @default(PENDENTE)
+  rawReference          Json?
+  linkedTransaction     Transaction?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@unique([bankAccountId, externalTransactionId])
+  @@index([userId])
+}
+
+model BankCategoryRule {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pattern    String // trecho normalizado (uppercase) da descrição, ex. "POSTO SHELL"
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, pattern])
+  @@index([userId])
+}
+
+// Trilha de auditoria de segurança — sobrevive à exclusão do usuário
+// (onDelete: SetNull) porque seu valor está justamente em não desaparecer
+// junto com a conta que originou o evento.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  resource  String
+  ipAddress String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

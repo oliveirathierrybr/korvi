@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { parseDateInput } from "@/lib/format";
 import type { ActionResult } from "@/lib/actions/categories";
 import { requireUserId } from "@/lib/session";
+import { directionToTransactionType, payBillWithTransaction } from "@/lib/actions/bill-helpers";
 
 const billSchema = z.object({
   direction: z.enum(["PAGAR", "RECEBER"]),
@@ -17,10 +18,6 @@ const billSchema = z.object({
 });
 
 type BillInput = z.infer<typeof billSchema>;
-
-function directionToTransactionType(direction: "PAGAR" | "RECEBER") {
-  return direction === "PAGAR" ? "SAIDA" : "ENTRADA";
-}
 
 function revalidateAll() {
   revalidatePath("/");
@@ -140,24 +137,8 @@ export async function markBillPaid(id: string): Promise<ActionResult> {
     return { error: "Esta conta já está quitada." };
   }
 
-  const type = directionToTransactionType(bill.direction);
-  const now = new Date();
-
   await prisma.$transaction(async (tx) => {
-    const transaction = await tx.transaction.create({
-      data: {
-        userId,
-        type,
-        amount: bill.amount,
-        description: bill.description,
-        date: now,
-        categoryId: bill.categoryId,
-      },
-    });
-    await tx.bill.update({
-      where: { id },
-      data: { status: "PAGO", paidAt: now, transaction: { connect: { id: transaction.id } } },
-    });
+    await payBillWithTransaction(tx, { userId, bill });
   });
 
   revalidateAll();

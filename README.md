@@ -26,6 +26,10 @@ Controle de caixa, contas a pagar e a receber e relatórios financeiros em um s�
 - **Contas a Pagar / Contas a Receber**: controle de vencimentos, com baixa
   automática que gera o lançamento correspondente no caixa (sem digitar duas
   vezes).
+- **Contas bancárias (Open Finance)**: conecte contas bancárias para
+  importar saldo e movimentações automaticamente, com conciliação e
+  categorização assistidas. Funciona em modo simulado por padrão fora de
+  produção — ver [docs/OPEN_FINANCE.md](docs/OPEN_FINANCE.md).
 - **Categorias**: organização própria de entradas e saídas.
 - **Relatórios**: comparativo mensal, distribuição por categoria e
   exportação em CSV.
