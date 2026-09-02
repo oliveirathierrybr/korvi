@@ -31,14 +31,25 @@ export async function getDashboardData(userId: string) {
   in7Days.setDate(in7Days.getDate() + 7);
   const monthStart = startOfMonth(today);
   const nextMonthStart = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
-  const sixMonthsAgoStart = new Date(monthStart.getFullYear(), monthStart.getMonth() - 5, 1);
+
+  // Fluxo de caixa dos últimos 6 meses: em vez de trazer todos os
+  // lançamentos do período para somar em JS (o dataset cresce sem limite com
+  // o tempo de uso), soma cada mês no próprio Postgres — 6 consultas
+  // pequenas e agregadas em vez de uma que traz linha por linha.
+  const monthWindows = Array.from({ length: 6 }, (_, i) => {
+    const offset = 5 - i;
+    const start = new Date(monthStart.getFullYear(), monthStart.getMonth() - offset, 1);
+    const end = new Date(monthStart.getFullYear(), monthStart.getMonth() - offset + 1, 1);
+    return { start, end };
+  });
 
   const [
     entradaAgg,
     saidaAgg,
     monthEntradaAgg,
     monthSaidaAgg,
-    sixMonthTx,
+    monthlyGroups,
+    categoryGroups,
     upcomingBills,
     recentTx,
     categories,
@@ -59,9 +70,19 @@ export async function getDashboardData(userId: string) {
       where: { userId, type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
       _sum: { amount: true },
     }),
-    prisma.transaction.findMany({
-      where: { userId, date: { gte: sixMonthsAgoStart } },
-      select: { type: true, amount: true, date: true, categoryId: true },
+    Promise.all(
+      monthWindows.map(({ start, end }) =>
+        prisma.transaction.groupBy({
+          by: ["type"],
+          where: { userId, date: { gte: start, lt: end } },
+          _sum: { amount: true },
+        })
+      )
+    ),
+    prisma.transaction.groupBy({
+      by: ["categoryId"],
+      where: { userId, type: "SAIDA", date: { gte: monthStart, lt: nextMonthStart } },
+      _sum: { amount: true },
     }),
     prisma.bill.findMany({
       where: { userId, status: "PENDENTE", dueDate: { lt: in7Days } },
@@ -83,54 +104,26 @@ export async function getDashboardData(userId: string) {
   const monthEntradas = monthEntradaAgg._sum.amount ?? 0;
   const monthSaidas = monthSaidaAgg._sum.amount ?? 0;
 
-  const monthlyMap = new Map<string, { entrada: number; saida: number }>();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(monthStart.getFullYear(), monthStart.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    monthlyMap.set(key, { entrada: 0, saida: 0 });
-  }
-  for (const tx of sixMonthTx) {
-    const key = `${tx.date.getFullYear()}-${tx.date.getMonth()}`;
-    const bucket = monthlyMap.get(key);
-    if (!bucket) continue;
-    if (tx.type === "ENTRADA") bucket.entrada += tx.amount;
-    else bucket.saida += tx.amount;
-  }
-  const cashFlow = Array.from(monthlyMap.entries()).map(([key, value]) => {
-    const [, monthIndex] = key.split("-").map(Number);
-    return {
-      month: MONTH_LABELS[monthIndex],
-      entrada: value.entrada,
-      saida: value.saida,
-    };
+  const cashFlow = monthWindows.map(({ start }, i) => {
+    const groups = monthlyGroups[i];
+    const entrada = groups.find((g) => g.type === "ENTRADA")?._sum.amount ?? 0;
+    const saida = groups.find((g) => g.type === "SAIDA")?._sum.amount ?? 0;
+    return { month: MONTH_LABELS[start.getMonth()], entrada, saida };
   });
 
   const categoryById = new Map(categories.map((c) => [c.id, c]));
-  const categoryTotals = new Map<
-    string,
-    { name: string; color: string; total: number }
-  >();
-
-  for (const tx of sixMonthTx) {
-    if (tx.type !== "SAIDA" || tx.date < monthStart || tx.date >= nextMonthStart) {
-      continue;
-    }
-    const category = categoryById.get(tx.categoryId);
-    if (!category) continue;
-    const existing = categoryTotals.get(tx.categoryId);
-    if (existing) {
-      existing.total += tx.amount;
-    } else {
-      categoryTotals.set(tx.categoryId, {
+  const expensesByCategory = categoryGroups
+    .map((group) => {
+      const category = categoryById.get(group.categoryId);
+      if (!category) return null;
+      return {
         name: category.name,
         color: category.color,
-        total: tx.amount,
-      });
-    }
-  }
-  const expensesByCategory = Array.from(categoryTotals.values()).sort(
-    (a, b) => b.total - a.total
-  );
+        total: group._sum.amount ?? 0,
+      };
+    })
+    .filter((c): c is { name: string; color: string; total: number } => c !== null)
+    .sort((a, b) => b.total - a.total);
 
   const overdueBills = upcomingBills.filter((b) => b.dueDate < today);
   const dueSoonBills = upcomingBills.filter((b) => b.dueDate >= today);
