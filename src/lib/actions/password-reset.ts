@@ -146,9 +146,12 @@ export async function resetPasswordAction(
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
 
   const user = await prisma.$transaction(async (tx) => {
+    // Incrementa sessionVersion junto com a troca de senha — invalida
+    // qualquer token JWT emitido antes deste reset (ver getSession em
+    // src/lib/session.ts), mesmo que ainda não tenha expirado.
     const updated = await tx.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash },
+      data: { passwordHash, sessionVersion: { increment: 1 } },
     });
     await tx.passwordResetToken.update({
       where: { id: resetToken.id },
@@ -162,6 +165,7 @@ export async function resetPasswordAction(
     email: user.email,
     name: user.name,
     companyName: user.companyName,
+    sessionVersion: user.sessionVersion,
   });
 
   redirect("/dashboard");

@@ -45,6 +45,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Não anuncia "roda em Next.js" via header X-Powered-By.
+  poweredByHeader: false,
   async headers() {
     return [
       {

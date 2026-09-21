@@ -14,6 +14,10 @@ model User {
   name              String
   companyName       String
   cnpj              String                @default("")
+  // Incrementado a cada redefinição de senha para invalidar tokens JWT
+  // emitidos antes da troca — o JWT em si não expira sozinho por até 30 dias
+  // (ver SESSION_DURATION_SECONDS em src/lib/session.ts).
+  sessionVersion    Int                   @default(0)
   createdAt         DateTime              @default(now())
   resetTokens       PasswordResetToken[]
   categories        Category[]
@@ -96,6 +100,7 @@ model Transaction {
   createdAt         DateTime         @default(now())
 
   @@index([userId])
+  @@index([userId, date])
 }
 
 enum BillDirection {
@@ -126,6 +131,7 @@ model Bill {
   createdAt   DateTime      @default(now())
 
   @@index([userId])
+  @@index([userId, status, dueDate])
 }
 
 // ── Conexão bancária (Open Finance) ────────────────────────────────────────

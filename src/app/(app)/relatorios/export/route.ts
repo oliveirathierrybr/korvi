@@ -5,6 +5,11 @@ import { getSession } from "@/lib/session";
 import { formatDate, parseDateInput } from "@/lib/format";
 import { toCsvRow } from "@/lib/csv";
 
+// Teto de linhas exportadas por vez — sem histórico suficiente para doer
+// hoje, mas evita que uma conta com anos de lançamentos gere um CSV sem
+// limite superior de tamanho/tempo de resposta.
+const MAX_EXPORT_ROWS = 50_000;
+
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) {
@@ -31,6 +36,7 @@ export async function GET(request: NextRequest) {
     where,
     include: { category: true },
     orderBy: { date: "asc" },
+    take: MAX_EXPORT_ROWS,
   });
 
   const header = ["Data", "Tipo", "Descrição", "Categoria", "Valor (R$)"];

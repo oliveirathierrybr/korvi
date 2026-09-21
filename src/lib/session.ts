@@ -1,6 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
@@ -18,6 +19,7 @@ export type SessionPayload = {
   email: string;
   name: string;
   companyName: string;
+  sessionVersion: number;
 };
 
 export async function createSessionToken(payload: SessionPayload) {
@@ -56,11 +58,29 @@ export async function clearSessionCookie() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
+/**
+ * Além de validar assinatura/expiração do JWT, confere o `sessionVersion`
+ * contra o valor atual no banco — proxy.ts (edge) só faz a checagem de
+ * assinatura por não ter acesso a Prisma ali, então esta é a barreira real
+ * que faz um reset de senha invalidar tokens antigos antes dos 30 dias.
+ */
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return verifySessionToken(token);
+
+  const payload = await verifySessionToken(token);
+  if (!payload) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { sessionVersion: true },
+  });
+  if (!user || user.sessionVersion !== payload.sessionVersion) {
+    return null;
+  }
+
+  return payload;
 }
 
 /**

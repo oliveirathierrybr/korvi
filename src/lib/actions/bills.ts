@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { parseDateInput } from "@/lib/format";
 import type { ActionResult } from "@/lib/actions/categories";
 import { requireUserId } from "@/lib/session";
@@ -137,9 +138,24 @@ export async function markBillPaid(id: string): Promise<ActionResult> {
     return { error: "Esta conta já está quitada." };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await payBillWithTransaction(tx, { userId, bill });
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      await payBillWithTransaction(tx, { userId, bill });
+    });
+  } catch (error) {
+    // Duplo clique / retry simultâneo: a checagem de status acima roda antes
+    // da transação, então dois requests concorrentes podem passar por ela
+    // juntos. A constraint única em Transaction.billId barra o dado
+    // duplicado, mas sem este catch o segundo request estourava um erro de
+    // banco não tratado em vez de uma mensagem legível.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return { error: "Esta conta já está quitada." };
+    }
+    throw error;
+  }
 
   revalidateAll();
   return { success: true };

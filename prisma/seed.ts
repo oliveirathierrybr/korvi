@@ -4,6 +4,23 @@ import bcrypt from "bcryptjs";
 import { categoryColorLight } from "../src/lib/colors";
 import { DEFAULT_CATEGORIES } from "../src/lib/default-categories";
 
+// Mesmo critério de "produção de verdade" usado em getBankProvider
+// (src/lib/bank/get-bank-provider.ts) — VERCEL_ENV distingue Produção de
+// Preview, já que a Vercel builda os dois com NODE_ENV=production. Sem essa
+// checagem, rodar `npm run seed` contra o Neon de produção criaria uma conta
+// com credencial fixa e documentada no repositório.
+function isRealProductionEnvironment() {
+  if (process.env.VERCEL_ENV) {
+    return process.env.VERCEL_ENV === "production";
+  }
+  return process.env.NODE_ENV === "production";
+}
+
+if (isRealProductionEnvironment()) {
+  console.error("Seed bloqueado: não é permitido rodar em ambiente de produção.");
+  process.exit(1);
+}
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });

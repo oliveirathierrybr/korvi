@@ -17,6 +17,7 @@ import { DeleteTransactionButton } from "@/components/transactions/delete-transa
 import { Pagination } from "@/components/pagination";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireUserId } from "@/lib/session";
+import { parseDateInput } from "@/lib/format";
 
 const PAGE_SIZE = 30;
 
@@ -37,8 +38,11 @@ export default async function CaixaPage({
   }
   if (params.from || params.to) {
     where.date = {};
-    if (params.from) where.date.gte = new Date(params.from);
-    if (params.to) where.date.lte = new Date(`${params.to}T23:59:59`);
+    if (params.from) where.date.gte = parseDateInput(params.from);
+    if (params.to) {
+      const to = parseDateInput(params.to);
+      where.date.lt = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1);
+    }
   }
 
   const requestedPage = Number.parseInt(params.page ?? "1", 10);

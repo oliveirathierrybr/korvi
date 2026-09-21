@@ -96,6 +96,7 @@ export async function registerAction(
     email: user.email,
     name: user.name,
     companyName: user.companyName,
+    sessionVersion: user.sessionVersion,
   });
 
   redirect("/dashboard");
@@ -140,6 +141,7 @@ export async function loginAction(
     email: user.email,
     name: user.name,
     companyName: user.companyName,
+    sessionVersion: user.sessionVersion,
   });
 
   redirect("/dashboard");
