@@ -92,7 +92,7 @@ export async function getDashboardData(userId: string) {
     prisma.transaction.findMany({
       where: { userId },
       take: 6,
-      orderBy: { date: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: { category: true },
     }),
     prisma.category.findMany({ where: { userId } }),

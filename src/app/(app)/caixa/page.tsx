@@ -55,7 +55,10 @@ export default async function CaixaPage({
     prisma.transaction.findMany({
       where,
       include: { category: true },
-      orderBy: { date: "desc" },
+      // Mais recentes primeiro pela hora em que foram lançados — `date` só
+      // guarda o dia, então ordenar por ela deixava lançamentos do mesmo dia
+      // empatados e o recém-criado caía no fim do grupo.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
     }),
